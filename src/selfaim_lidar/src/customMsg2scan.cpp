@@ -1,36 +1,23 @@
-#include "rclcpp/rclcpp.hpp"
-#include "livox_ros_driver2/msg/custom_msg.hpp"
-#include "sensor_msgs/msg/point_cloud2.hpp"
-#include "nav_msgs/msg/odometry.hpp"
-#include "geometry_msgs/msg/quaternion.hpp"
-#include "std_msgs/msg/float64.hpp"
-#include "tf2/LinearMath/Matrix3x3.h"
-#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
-#include <Eigen/Core>
-#include <cmath>
-#include "pcl/point_cloud.h"
-#include "pcl_conversions/pcl_conversions.h"
-#include <pcl/point_types.h>
-#include <pcl/kdtree/kdtree_flann.h>
+#include "selfaim_lidar/customMsg2scan.hpp"
 
-class CustomPoint2PointCloud2 : public rclcpp::Node
+#define BASKET_HEIGHT 2.5    // 篮筐高度
+namespace auto_aim
 {
-public:
-    CustomPoint2PointCloud2() : Node("customp2pcl")
+    CustomPoint2PointCloud::CustomPoint2PointCloud2() : Node("customp2pcl")
     {
         global_target_ = {};    // 存储目标点的x,y坐标
-        basket_height = 2.5;
+
         global_cloud_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>("/global_cloud", rclcpp::SensorDataQoS());
         // split_cloud_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>("/split_cloud", 5);
         target_cloud_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>("/target_cloud", 5);
-        yaw_pub = this->create_publisher<std_msgs::msg::Float64>("/aim_target", 1); 
+        pose_pub_ = this->create_publisher<geometry_msgs::msg::Pose>("/aim_target", 1); 
 
         this->create_subscription<nav_msgs::msg::Odometry>("/Odometry", 10, std::bind(&CustomPoint2PointCloud2::odometry_callback, this, std::placeholders::_1));
         this->create_subscription<livox_ros_driver2::msg::CustomMsg>("/livox/lidar", 10, std::bind(&CustomPoint2PointCloud2::CustomMsg_to_pointcloud2_callback, this, std::placeholders::_1));
     }
 
-private:
-    void odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
+
+    void CustomPoint2PointCloud::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
     {
         if(msg == nullptr){
             return;
@@ -54,14 +41,15 @@ private:
         }
     }
 
-    pcl::PointXYZ convertToPCL(const livox_ros_driver2::msg::CustomPoint_<std::allocator<void>> &point) {
+    pcl::PointXYZ CustomPoint2PointCloud::convertToPCL(const livox_ros_driver2::msg::CustomPoint_<std::allocator<void>> &point) {
         pcl::PointXYZ pcl_point;
         pcl_point.x = point.x;
         pcl_point.y = point.y;
         pcl_point.z = point.z;
         return pcl_point;
     }
-    void CustomMsg_to_pointcloud2_callback(const livox_ros_driver2::msg::CustomMsg::SharedPtr msg)
+    
+    void CustomPoint2PointCloud::CustomMsg_to_pointcloud2_callback(const livox_ros_driver2::msg::CustomMsg::SharedPtr msg)
     {
         if(msg == nullptr){
             return;
@@ -132,12 +120,12 @@ private:
             match_cloud(cloud_points_);
             sensor_msgs::msg::PointCloud2 target_cloud_msg = ros2PointCloud2(target_point_);
             target_cloud_pub->publish(target_cloud_msg);
-            pub_yaw();
+            pub_basketlocation();
         }
     }
 
     // 将pcl::PointCloud转换为sensor_msgs::PointCloud2，能在rviz查看点云成像图
-    sensor_msgs::msg::PointCloud2 ros2PointCloud2(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_points){
+    sensor_msgs::msg::PointCloud2 CustomPoint2PointCloud::ros2PointCloud2(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_points){
         sensor_msgs::msg::PointCloud2 cloud_msg;
         cloud_msg.header.stamp = rclcpp::Clock().now();
         cloud_msg.header.frame_id = "body";
@@ -186,7 +174,7 @@ private:
         return cloud_msg;
     }
 
-    std::vector<double> point_trans(){
+    std::vector<double> CustomPoint2PointCloud::point_trans(){
         double x,y,yaw;
         int i = 0;
         x = cur_pos_[i];
@@ -197,19 +185,19 @@ private:
         std::vector<double> trans_target;
         Eigen::Matrix2d yaw_matrix;
         yaw_matrix << cos(yaw), -sin(yaw), 
-                      sin(yaw), cos(yaw);
+                        sin(yaw), cos(yaw);
         
         double x_old = global_target_[0];
         double y_old = global_target_[1];
         Eigen::Vector2d trans_vector(x_old - x, y_old - y);
         Eigen::Vector2d target_trans = yaw_matrix * trans_vector;
 
-        trans_target = {target_trans(0), target_trans(1),basket_height};
+        trans_target = {target_trans(0), target_trans(1),BASKET_HEIGHT};
         return trans_target;
     }
 
     // 将目标点周围的点云成像
-    void match_cloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_points){
+    void CustomPoint2PointCloud::match_cloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_points){
         
         pcl::KdTreeFLANN<pcl::PointXYZ> tree;
         tree.setInputCloud(cloud_points);
@@ -221,7 +209,7 @@ private:
 
         /*-------------半径搜索---------------*/
         std::vector<int> pointIdx_radius_search; // 存储半径搜索得到的点云的点索引
-	      std::vector<float> radius_squared_distance; // 存储距离目标点的距离
+            std::vector<float> radius_squared_distance; // 存储距离目标点的距离
         float radius = 0.5;
         tree.radiusSearch(searchPoint, radius, pointIdx_radius_search, radius_squared_distance);
 
@@ -235,33 +223,56 @@ private:
 
     }
 
-    void pub_yaw(){
+    // x为yaw角，y为pitch角
+    void CustomPoint2PointCloud::pub_basketlocatioin(){
         double x = trans_target_[0];
         double y = trans_target_[1];
+        double z = trans_target_[2];
         double yaw = atan2(y,x);
-        auto yaw_msg = std_msgs::msg::Float64();
-        yaw_msg.data = yaw;
-        yaw_pub->publish(yaw_msg);
+        double pitch = atan2(z,x)
+        double roll = 0;
+        geometry_msgs::msg::TransformStamped t;
+        t.header.stamp = this->now() - rclcpp::Duration::from_seconds(timestamp_offset_);
+        t.header.frame_id = "odom";
+        t.child_frame_id = "gimbal_link";
+        tf2::Quaternion q;
+        q.setRPY(roll, pitch, yaw);
+        t.transform.rotation = tf2::toMsg(q);
+        tf_broadcaster_->sendTransform(t);
+
+        geometry_msgs::msg::PoseStamped ps;
+        ps.header = armors_msg->header;
+        ps.pose. = armor.pose;
+        try {
+            armor.pose = tf2_buffer_->transform(ps, target_frame_).pose;    // 从雷达坐标系转换为云台坐标系下的位置
+        } catch (const tf2::ExtrapolationException & ex) {
+            RCLCPP_ERROR(get_logger(), "Error while transforming %s", ex.what());
+            return;
+        }
+        auto pose_msg = geometry_msgs::msg::Pose();
+
+        pose_msg.x = yaw;   
+        pose_msg.y = pitch;
+        pose_pub_->publish(pose_msg);
+
     }
-private:
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_points_;
-    pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_;
-    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr global_cloud_pub;
-    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr split_cloud_pub;
-    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr target_cloud_pub;
-    rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr yaw_pub;
-    std::vector<double> cur_pos_;
-    std::vector<double> trans_target_;
-    std::vector<double> global_target_;
-    double basket_height;
-};
 
-
-int main(int argc, char** argv)
-{
-    rclcpp::init(argc, argv);
-    auto node = std::make_shared<CustomPoint2PointCloud2>();
-    rclcpp::spin(node);
-    rclcpp::shutdown();
-    return 0;
+   
 }
+
+#include "rclcpp_components/register_node_macro.hpp"
+
+// Register the component with class_loader.
+// This acts as a sort of entry point, allowing the component to be discoverable when its library
+// is being loaded into a running process.
+RCLCPP_COMPONENTS_REGISTER_NODE(auto_aim::CustomPoint2PointCloud)
+
+
+// int main(int argc, char** argv)
+// {
+//     rclcpp::init(argc, argv);
+//     auto node = std::make_shared<CustomPoint2PointCloud2>();
+//     rclcpp::spin(node);
+//     rclcpp::shutdown();
+//     return 0;
+// }

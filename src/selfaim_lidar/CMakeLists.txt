@@ -44,7 +44,10 @@ ament_target_dependencies(
   "pcl_conversions"
 )
 
-
+rclcpp_components_register_node(${PROJECT_NAME}
+  auto_aim::CustomPoint2PointCloud
+  EXECUTABLE basket_detector_node
+)
 
 install(TARGETS customMsg2scan
   DESTINATION lib/${PROJECT_NAME})
