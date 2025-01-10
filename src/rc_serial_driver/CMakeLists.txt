@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(rm_serial_driver)
+project(rc_serial_driver)
 
 ## Use C++14
 set(CMAKE_CXX_STANDARD 14)
@@ -24,12 +24,11 @@ ament_auto_find_build_dependencies()
 ###########
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
-  src/rm_serial_driver.cpp
-  src/crc.cpp
+  src/rc_serial_driver.cpp
 )
 
 rclcpp_components_register_node(${PROJECT_NAME}
-  PLUGIN rm_serial_driver::RMSerialDriver
+  PLUGIN rc_serial_driver::SerialDriver
   EXECUTABLE ${PROJECT_NAME}_node
 )
 

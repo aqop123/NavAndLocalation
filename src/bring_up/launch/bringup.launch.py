@@ -112,10 +112,10 @@ def generate_launch_description():
         name='laser_detector',
     )
     serial_param = os.path.join(
-        get_package_share_directory('serial_driver'), 'config', 'serial_driver.yaml')
-    serial_driver_node = Node(
-        package='serial_driver',
-        executable='serial_driver_node',
+        get_package_share_directory('rc_serial_driver'), 'config', 'serial_driver.yaml')
+    rc_serial_driver_node = Node(
+        package='rc_serial_driver',
+        executable='rc_serial_driver_node',
         name='serial_driver',
         output='both',
         emulate_tty=True,
@@ -124,7 +124,7 @@ def generate_launch_description():
   
     delay_serial_node = TimerAction(
         period=1.5,
-        actions=[serial_driver_node],
+        actions=[rc_serial_driver_node],
     )
     # # Assemble the launch description
     # ld = LaunchDescription([
