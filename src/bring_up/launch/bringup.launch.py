@@ -54,7 +54,7 @@ def generate_launch_description():
         description='Flag to launch RViz.')
 
     # Node parameters, including those from the YAML configuration file
-    laser_mapping_params = [
+    pointlio_mid360_params = [
         PathJoinSubstitution([
             FindPackageShare('bring_up'),
             'config', 'mid360_ver2.yaml'
@@ -79,7 +79,7 @@ def generate_launch_description():
         executable='pointlio_mapping',
         name='laserMapping',
         output='screen',
-        parameters=laser_mapping_params,
+        parameters=pointlio_mid360_params,
         # prefix='gdb -ex run --args'
     )
 
@@ -89,8 +89,8 @@ def generate_launch_description():
         executable='rviz2',
         name='rviz',
         arguments=['-d', PathJoinSubstitution([
-            FindPackageShare('point_lio_ver2'),
-            'rviz_cfg', 'loam_livox.rviz'
+            FindPackageShare('bring_up'),
+            'rviz', 'pointlio_cfg.rviz'
         ])],
         condition=IfCondition(LaunchConfiguration('rviz')),
         prefix='nice'
@@ -122,10 +122,10 @@ def generate_launch_description():
         parameters=[serial_param],
     )
   
-    delay_serial_node = TimerAction(
-        period=1.5,
-        actions=[rc_serial_driver_node],
-    )
+    # delay_serial_node = TimerAction(
+    #     period=1.5,
+    #     actions=[rc_serial_driver_node],
+    # )
     # # Assemble the launch description
     # ld = LaunchDescription([
     #     rviz_arg,
@@ -137,7 +137,7 @@ def generate_launch_description():
     # ])
 
     ld = LaunchDescription()
-    ld.add_action(delay_serial_node)
+    ld.add_action(rc_serial_driver_node)
     ld.add_action(livox_driver2_node)
     ld.add_action(rviz_arg)
     ld.add_action(laser_mapping_node)
