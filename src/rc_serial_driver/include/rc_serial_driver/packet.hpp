@@ -36,9 +36,9 @@ namespace rc_serial_driver
   } __attribute__((packed));
 
 
-  inline ReceivePacket fromVector(const std::vector<uint8_t> & data)
+  inline SendPacket fromVector(const std::vector<uint8_t> & data)
   {
-    ReceivePacket packet;
+    SendPacket packet;
     std::copy(data.begin(), data.end(), reinterpret_cast<uint8_t *>(&packet));
     return packet;
   }
@@ -47,9 +47,7 @@ namespace rc_serial_driver
   inline std::vector<uint8_t> toVector(const SendPacket & data)
   {
     std::vector<uint8_t> packet(sizeof(SendPacket));
-    std::copy(
-      reinterpret_cast<const uint8_t *>(&data),
-      reinterpret_cast<const uint8_t *>(&data) + sizeof(SendPacket), packet.begin());
+    memcpy(packet.data(), &data, sizeof(SendPacket));
     return packet;
   }
 

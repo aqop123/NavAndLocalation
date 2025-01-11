@@ -108,7 +108,7 @@ def generate_launch_description():
 
     lidar_node = Node(
         package='selfaim_lidar',
-        executable='basket_detector_node',
+        executable='selfaim_lidar_node',
         name='laser_detector',
     )
     serial_param = os.path.join(

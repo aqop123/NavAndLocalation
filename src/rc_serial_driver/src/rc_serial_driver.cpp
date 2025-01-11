@@ -32,23 +32,26 @@ RCSerialDriver::RCSerialDriver(const rclcpp::NodeOptions & options)
 
   getParams();
 
+  try {
+    serial_driver_down_->init_port(device_name_down_, *device_config_);
+    if (!serial_driver_down_->port()->is_open()) {
+      serial_driver_down_->port()->open();
+    }
+  } catch (const std::exception & ex) {
+    RCLCPP_ERROR(
+      get_logger(), "Error creating serial port: %s - %s", device_name_down_.c_str(), ex.what());
+    throw ex;
+  }
   // Create Subscription
   aim_sub_ = this->create_subscription<geometry_msgs::msg::Vector3>(
     "/aim_target", rclcpp::SensorDataQoS(),
     std::bind(&RCSerialDriver::sendBasketData, this, std::placeholders::_1));
-  // aim_sub_.subscribe(this, "/aim_target", rclcpp::SensorDataQoS().get_rmw_qos_profile());
 
-  // aim_sync_ = std::make_unique<AimSync>(aim_syncpolicy(500), aim_sub_);
-  // aim_sync_->registerCallback(
-  //   std::bind(&SerialDriver::sendBasketData, this, std::placeholders::_1));
 
 }
 
 RCSerialDriver::~RCSerialDriver()
 {
-  if (receive_thread_.joinable()) {
-    receive_thread_.join();
-  }
 
   if (serial_driver_down_->port()->is_open()) {
     serial_driver_down_->port()->close();
@@ -71,8 +74,8 @@ void RCSerialDriver::sendBasketData(const geometry_msgs::msg::Vector3::ConstShar
 
     std::vector<uint8_t> data_down = toVector(packet);   // 
     serial_driver_down_->port()->send(data_down);   // 
-
-    //serial_driver_down_->port()->send(data_down);
+    SendPacket test_data = fromVector(data_down);
+    RCLCPP_INFO(get_logger(), "SEND DATA: %f, %f, %f", test_data.x, test_data.y, test_data.yaw);
 
     // std_msgs::msg::Float64 latency;
     // latency.data = (this->now() - msg->header.stamp).seconds() * 1000.0;
@@ -97,7 +100,8 @@ void RCSerialDriver::getParams()
   auto sb = StopBits::ONE;     // 
 
   try {
-    device_down_ = declare_parameter<std::string>("device_name_down", "");
+    device_name_down_ = declare_parameter<std::string>("device_name_down", "/dev/ttyUSB0");
+    // device_name_down_ = "/dev/ttyUSB0";
     // device_up_   = declare_parameter<std::string>("device_name_up", "");
   } catch (rclcpp::ParameterTypeException & ex) {
     RCLCPP_ERROR(get_logger(), "The device name provided was invalid");
@@ -105,14 +109,14 @@ void RCSerialDriver::getParams()
   }
 
   try {
-    baud_rate = declare_parameter<int>("baud_rate", 0);
+    baud_rate = declare_parameter<int>("baud_rate", 115200);
   } catch (rclcpp::ParameterTypeException & ex) {
     RCLCPP_ERROR(get_logger(), "The baud_rate provided was invalid");
     throw ex;
   }
 
   try {
-    const auto fc_string = declare_parameter<std::string>("flow_control", "");
+    const auto fc_string = declare_parameter<std::string>("flow_control", "none");
 
     if (fc_string == "none") {
       fc = FlowControl::NONE;
@@ -131,7 +135,7 @@ void RCSerialDriver::getParams()
   }
 
   try {
-    const auto pt_string = declare_parameter<std::string>("parity", "");
+    const auto pt_string = declare_parameter<std::string>("parity", "none");
 
     if (pt_string == "none") {
       pt = Parity::NONE;
@@ -148,7 +152,7 @@ void RCSerialDriver::getParams()
   }
 
   try {
-    const auto sb_string = declare_parameter<std::string>("stop_bits", "");
+    const auto sb_string = declare_parameter<std::string>("stop_bits", "1");
 
     if (sb_string == "1" || sb_string == "1.0") {
       sb = StopBits::ONE;
@@ -166,6 +170,7 @@ void RCSerialDriver::getParams()
 
   device_config_ =
     std::make_unique<drivers::serial_driver::SerialPortConfig>(baud_rate, fc, pt, sb);
+    RCLCPP_INFO(get_logger(), "The device name provided was OK");
 }
 
 

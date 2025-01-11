@@ -54,16 +54,10 @@ private:
 private:
   // Serial port
   std::unique_ptr<IoContext> owned_ctx_;
-  std::string device_down_;
-  // std::string device_up_;
+  std::string device_name_down_;
   std::unique_ptr<drivers::serial_driver::SerialPortConfig> device_config_;
   std::unique_ptr<drivers::serial_driver::SerialDriver> serial_driver_down_;
-  // std::unique_ptr<drivers::serial_driver::SerialDriver> serial_driver_up_;
 
-
-  // Broadcast tf from odom to gimbal_link
-  // double timestamp_offset_ = 0;
-  // std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
   rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr aim_sub_;
 
@@ -78,8 +72,6 @@ private:
   // For debug usage
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr latency_pub_;
 
-
-  std::thread receive_thread_;
 
 };
 }  // namespace rm_serial_driver
