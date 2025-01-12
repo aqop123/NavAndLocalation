@@ -26,6 +26,7 @@ private:
 private:
 
     rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr pose_pub_;
+    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
     std::vector<double> cur_pos_;
     std::vector<double> trans_target_;
     std::vector<double> global_target_;

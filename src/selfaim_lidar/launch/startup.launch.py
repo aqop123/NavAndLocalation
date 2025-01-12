@@ -6,24 +6,20 @@ from launch.substitutions import Command
 
 def generate_launch_description():
 
-    from launch_ros.descriptions import ComposableNode
     from launch_ros.actions import ComposableNodeContainer, Node, SetParameter, PushRosNamespace
     from launch.actions import TimerAction, Shutdown
     from launch import LaunchDescription
 
 
-    lidar_node = ComposableNode(
+    lidar_node = Node(
         package='selfaim_lidar',
         executable='selfaim_lidar_node',
         name='laser_detector',
+        namespace='',
+        output='screen',
     )
 
 
 
-
-
     
-    launch_description_list = [lidar_node]
-    
-    
-    return LaunchDescription(launch_description_list)
+    return LaunchDescription([lidar_node])

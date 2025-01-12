@@ -56,7 +56,7 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 )
 
 rclcpp_components_register_node(${PROJECT_NAME}
-  PLUGIN "auto_aim::CustomPoint2PointCloud"
+  PLUGIN auto_aim::CustomPoint2PointCloud
   EXECUTABLE ${PROJECT_NAME}_node
 )
 
@@ -76,6 +76,5 @@ endif()
 
 ament_auto_package(
   INSTALL_TO_SHARE
-
   launch
 )

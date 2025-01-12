@@ -44,13 +44,21 @@ namespace rc_serial_driver
   }
 
 
-  inline std::vector<uint8_t> toVector(const SendPacket & data)
+  // inline std::vector<uint8_t> toVector(const SendPacket & data)
+  // {
+  //   std::vector<uint8_t> packet(sizeof(SendPacket));
+  //   memcpy(packet.data(), &data, sizeof(SendPacket));
+  //   return packet;
+  // }
+
+   inline std::vector<uint8_t> toVector(const SendPacket & data)
   {
     std::vector<uint8_t> packet(sizeof(SendPacket));
-    memcpy(packet.data(), &data, sizeof(SendPacket));
+    std::copy(
+      reinterpret_cast<const uint8_t *>(&data),
+      reinterpret_cast<const uint8_t *>(&data) + sizeof(SendPacket), packet.begin());
     return packet;
   }
-
 }  // namespace serial_driver
 
 #endif  // SERIAL_DRIVER__PACKET_HPP_

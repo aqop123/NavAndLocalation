@@ -54,7 +54,7 @@ def generate_launch_description():
         description='Flag to launch RViz.')
 
     # Node parameters, including those from the YAML configuration file
-    pointlio_mid360_params = [
+    laser_mapping_params = [
         PathJoinSubstitution([
             FindPackageShare('bring_up'),
             'config', 'mid360_ver2.yaml'
@@ -79,7 +79,7 @@ def generate_launch_description():
         executable='pointlio_mapping',
         name='laserMapping',
         output='screen',
-        parameters=pointlio_mid360_params,
+        parameters=laser_mapping_params,
         # prefix='gdb -ex run --args'
     )
 
@@ -89,8 +89,8 @@ def generate_launch_description():
         executable='rviz2',
         name='rviz',
         arguments=['-d', PathJoinSubstitution([
-            FindPackageShare('bring_up'),
-            'rviz', 'pointlio_cfg.rviz'
+            FindPackageShare('point_lio_ver2'),
+            'rviz_cfg', 'loam_livox.rviz'
         ])],
         condition=IfCondition(LaunchConfiguration('rviz')),
         prefix='nice'
@@ -110,6 +110,7 @@ def generate_launch_description():
         package='selfaim_lidar',
         executable='selfaim_lidar_node',
         name='laser_detector',
+        output='screen',
     )
     serial_param = os.path.join(
         get_package_share_directory('rc_serial_driver'), 'config', 'serial_driver.yaml')

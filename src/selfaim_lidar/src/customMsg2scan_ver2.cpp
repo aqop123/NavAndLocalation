@@ -5,18 +5,19 @@ namespace auto_aim
 {
     CustomPoint2PointCloud::CustomPoint2PointCloud(const rclcpp::NodeOptions & options) : Node("customp2pcl", options)
     {
+        RCLCPP_ERROR(get_logger(), "Start ODOM Subscriber!");
         global_target_ = {};    // 存储目标点的x,y坐标
 
         pose_pub_ = this->create_publisher<geometry_msgs::msg::Vector3>("/aim_target", 1); 
 
-        this->create_subscription<nav_msgs::msg::Odometry>("/Odometry", 10, std::bind(&CustomPoint2PointCloud::odometry_callback, this, std::placeholders::_1));
+        odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>("/Odometry", 10, std::bind(&CustomPoint2PointCloud::odometry_callback, this, std::placeholders::_1));
     }
 
     void CustomPoint2PointCloud::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
     {
-        if(msg == nullptr){
-            return;
-        }
+        // if(msg == nullptr){
+        //     return;
+        // }
         double x = msg->pose.pose.position.x;
         double y = msg->pose.pose.position.y;
         geometry_msgs::msg::Pose::_orientation_type orientation = msg->pose.pose.orientation;
@@ -24,7 +25,7 @@ namespace auto_aim
         double roll, pitch, yaw;
         tf2::Matrix3x3 matrix(q);
         matrix.getRPY(roll, pitch, yaw);
-        
+        // RCLCPP_INFO(get_logger(), "%f, %f, %f",x,y,yaw);
         geometry_msgs::msg::Vector3 pose_msg;
         pose_msg.x = x;
         pose_msg.y = y;

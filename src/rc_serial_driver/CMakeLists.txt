@@ -28,7 +28,7 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 )
 
 rclcpp_components_register_node(${PROJECT_NAME}
-  PLUGIN rc_serial_driver::SerialDriver
+  PLUGIN rc_serial_driver::RCSerialDriver
   EXECUTABLE ${PROJECT_NAME}_node
 )
 
