@@ -1,0 +1,9 @@
+image: RIGHT_X.pgm
+mode: trinary
+resolution: 0.05
+# origin: [-8.64, -8.75, 0]
+# origin: [-7.34, -7.05, 0]
+origin: [-2.54, -3.05, 0]
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.25
