@@ -36,8 +36,8 @@ public:
 private:
     void transformAnglesToRobotFrame(double mid360_yaw, double mid360_pitch, 
                                 double& robot_yaw, double& robot_pitch) {
-        // 转换yaw角：减去90度（顺时针旋转90度），转换为弧度
-        double yaw_offset = -M_PI / 2.0;  // -90度对应的弧度值
+        // 转换yaw角：加上90度（顺时针旋转90度），转换为弧度
+        double yaw_offset = M_PI / 2.0;  // 90度对应的弧度值
         robot_yaw = imu_yaw + yaw_offset;
 
         // 确保yaw角在[-π, π]范围内
