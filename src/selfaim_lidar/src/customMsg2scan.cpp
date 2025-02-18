@@ -34,13 +34,6 @@ public:
     }
 
 private:
-    Eigen::Vector3d transformToRobotFrame(const Eigen::Vector3d& mid360_pos, 
-        const Eigen::Matrix3d& rotation_matrix, 
-        const Eigen::Vector3d& translation_vector) {
-        // 应用旋转和平移
-        Eigen::Vector3d robot_pos = rotation_matrix * mid360_pos + translation_vector;
-        return robot_pos;
-    }
     void transformAnglesToRobotFrame(double mid360_yaw, double mid360_pitch, 
                                 double& robot_yaw, double& robot_pitch) {
         // 转换yaw角：减去90度（顺时针旋转90度），转换为弧度
@@ -71,6 +64,7 @@ private:
         tf2::Matrix3x3 matrix(q);
         matrix.getRPY(roll, pitch, yaw);
         
+        /*--------转到机器人坐标系（用tf2发布也行）--------*/
         Eigen::Vector3d mid360_pos(x, y, z);
         Eigen::Matrix3d rotation_matrix;
         rotation_matrix << 0, 1, 0,
@@ -78,7 +72,7 @@ private:
                         0, 0, 1;
         // 定义平移向量（mid360坐标系到机器人坐标系）
         Eigen::Vector3d translation_vector(-0.077, -0.292, 0);  
-        Eigen::Vector3d robot_pos = transformToRobotFrame(mid360_pos, rotation_matrix, translation_vector);
+        Eigen::Vector3d robot_pos = rotation_matrix * mid360_pos + translation_vector;
         double robot_yaw, robot_pitch;
         transformAnglesToRobotFrame(yaw, pitch, robot_yaw, robot_pitch);
 

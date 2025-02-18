@@ -22,9 +22,6 @@ public:
 
 private:
     void odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg);
-    Eigen::Vector3d transformToRobotFrame(const Eigen::Vector3d& imu_point, 
-                                            const Eigen::Matrix3d& rotation_matrix, 
-                                            const Eigen::Vector3d& translation_vector);
     void transformAnglesToRobotFrame(double imu_yaw, double imu_pitch, 
                                      double& robot_yaw, double& robot_pitch) ;
 
