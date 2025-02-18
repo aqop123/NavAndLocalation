@@ -67,8 +67,8 @@ private:
         /*--------转到机器人坐标系（用tf2发布也行）--------*/
         Eigen::Vector3d mid360_pos(x, y, z);
         Eigen::Matrix3d rotation_matrix;
-        rotation_matrix << 0, 1, 0,
-                        -1, 0, 0,
+        rotation_matrix << 0, -1, 0,
+                        1, 0, 0,
                         0, 0, 1;
         // 定义平移向量（mid360坐标系到机器人坐标系）
         Eigen::Vector3d translation_vector(-0.077, -0.292, 0);  
