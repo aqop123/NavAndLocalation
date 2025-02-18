@@ -22,6 +22,12 @@ public:
 
 private:
     void odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg);
+    Eigen::Vector3d transformToRobotFrame(const Eigen::Vector3d& imu_point, 
+                                            const Eigen::Matrix3d& rotation_matrix, 
+                                            const Eigen::Vector3d& translation_vector);
+    void transformAnglesToRobotFrame(double imu_yaw, double imu_pitch, 
+                                     double& robot_yaw, double& robot_pitch) ;
+
     pcl::PointXYZ convertToPCL(const livox_ros_driver2::msg::CustomPoint_<std::allocator<void>> &point);
     void CustomMsg_to_pointcloud2_callback(const livox_ros_driver2::msg::CustomMsg::SharedPtr msg);
     sensor_msgs::msg::PointCloud2 ros2PointCloud2(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_points);
@@ -39,6 +45,8 @@ private:
     std::vector<double> cur_pos_;
     std::vector<double> trans_target_;
     std::vector<double> global_target_;
+    std::vector<double> basket_target_;
+    Egien::Maxtrix4d T_WorldBasket;
     double basket_height;
 
 };

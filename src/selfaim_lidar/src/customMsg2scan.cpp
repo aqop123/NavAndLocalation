@@ -13,14 +13,22 @@
 #include <pcl/point_types.h>
 #include <pcl/kdtree/kdtree_flann.h>
 
+#define X_TARGET
+#define Y_TARGET
+#define Z_TARGET
+
 class CustomPoint2PointCloud2 : public rclcpp::Node
 {
 public:
     CustomPoint2PointCloud2(const rclcpp::NodeOptions & options) : Node("customp2pcl")
     {
         RCLCPP_ERROR(get_logger(), "Start ODOM Subscriber!");
-        basket_target_ = {};    // 存储目标点的x,y坐标
-        basket_height = 2.5;
+        basket_target_ = {X_TARGET, Y_TARGET, Z_TARGET};
+        
+        T_WorldBasket << 0, 0, 0, X_TARGET,
+                         0, 0, 0, Y_TARGET,
+                         0, 0, 0, Z_TARGET,
+                         0, 0, 0, 1;
         global_cloud_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>("/global_cloud", rclcpp::SensorDataQoS());
         // split_cloud_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>("/split_cloud", 5);
         target_cloud_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>("/target_cloud", 5);
@@ -31,6 +39,29 @@ public:
     }
 
 private:
+    Eigen::Vector3d transformToRobotFrame(const Eigen::Vector3d& mid360_pos, 
+        const Eigen::Matrix3d& rotation_matrix, 
+        const Eigen::Vector3d& translation_vector) {
+        // 应用旋转和平移
+        Eigen::Vector3d robot_pos = rotation_matrix * mid360_pos + translation_vector;
+        return robot_pos;
+    }
+    void transformAnglesToRobotFrame(double mid360_yaw, double mid360_pitch, 
+                                double& robot_yaw, double& robot_pitch) {
+        // 转换yaw角：减去90度（顺时针旋转90度），转换为弧度
+        double yaw_offset = -M_PI / 2.0;  // -90度对应的弧度值
+        robot_yaw = imu_yaw + yaw_offset;
+
+        // 确保yaw角在[-π, π]范围内
+        if (robot_yaw > M_PI) {
+        robot_yaw -= 2.0 * M_PI;
+        } else if (robot_yaw < -M_PI) {
+        robot_yaw += 2.0 * M_PI;
+        }
+
+        // Pitch角不变
+        robot_pitch = imu_pitch;
+    }
     void odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
     {
         if(msg == nullptr){
@@ -38,20 +69,35 @@ private:
         }
         double x = msg->pose.pose.position.x;
         double y = msg->pose.pose.position.y;
+        double z = msg->pose.pose.position.z;
         geometry_msgs::msg::Pose::_orientation_type orientation = msg->pose.pose.orientation;
         tf2::Quaternion q(orientation.x, orientation.y, orientation.z, orientation.w);
         double roll, pitch, yaw;
         tf2::Matrix3x3 matrix(q);
         matrix.getRPY(roll, pitch, yaw);
         
+        Eigen::Vector3d mid360_pos(x, y, z);
+        Eigen::Matrix3d rotation_matrix;
+        rotation_matrix << 0, 1, 0,
+                        -1, 0, 0,
+                        0, 0, 1;
+        // 定义平移向量（mid360坐标系到机器人坐标系）
+        Eigen::Vector3d translation_vector(-0.077, -0.292, 0);  
+        Eigen::Vector3d robot_pos = transformToRobotFrame(mid360_pos, rotation_matrix, translation_vector);
+        double robot_yaw, robot_pitch;
+        transformAnglesToRobotFrame(yaw, pitch, robot_yaw, robot_pitch);
+
+        RCLCPP_INFO(get_logger(), "lidar:%f, %f, %f",x,y,yaw);
+        RCLCPP_INFO(get_logger(), "robot:%f, %f, %f",robot_pos(0),robot_pos(1),robot_yaw);
+
         if(cur_pos_.empty()){
-            cur_pos_.emplace_back(x);
-            cur_pos_.emplace_back(y);
-            cur_pos_.emplace_back(yaw);
+            cur_pos_.emplace_back(robot_pos(0));
+            cur_pos_.emplace_back(robot_pos(1));
+            cur_pos_.emplace_back(robot_yaw);
         }else{
-            cur_pos_.emplace(cur_pos_.begin(), x);
-            cur_pos_.emplace(cur_pos_.begin() + 1, y);
-            cur_pos_.emplace(cur_pos_.begin() + 2, yaw);
+            cur_pos_.emplace(cur_pos_.begin(), robot_pos(0));
+            cur_pos_.emplace(cur_pos_.begin() + 1, robot_pos(1));
+            cur_pos_.emplace(cur_pos_.begin() + 2, robot_yaw);
         }
     }
 
@@ -189,29 +235,46 @@ private:
 
     std::vector<double> point_trans(){
         double x,y,yaw;
-        int i = 0;
-        x = cur_pos_[i];
-        y = cur_pos_[i+1];
-        yaw = cur_pos_[i+2];
+        x = cur_pos_[0];
+        y = cur_pos_[1];
+        yaw = cur_pos_[2];
 
         /*-------获得目标点在机器人系下的坐标-------*/
-        std::vector<double> trans_target;
-        Eigen::Matrix2d yaw_matrix;
-        yaw_matrix << cos(yaw), -sin(yaw), 
-                      sin(yaw), cos(yaw);
+        // std::vector<double> trans_target;
+        // Eigen::Matrix2d yaw_matrix;
+        // yaw_matrix << cos(yaw), -sin(yaw), 
+        //               sin(yaw), cos(yaw);
         
-        double x_old = basket_target_[0];
-        double y_old = basket_target_[1];
-        Eigen::Vector2d trans_vector(x_old - x, y_old - y);
-        Eigen::Vector2d target_trans = yaw_matrix * trans_vector;
+        // double x_old = basket_target_[0];
+        // double y_old = basket_target_[1];
+        // Eigen::Vector2d trans_vector(x_old - x, y_old - y);
+        // Eigen::Vector2d target_trans = yaw_matrix * trans_vector;
+        // double new_yaw = atan2(target_trans(1), target_trans(0));
+        // trans_target = {target_trans(0), target_trans(1), new_yaw};
 
-        trans_target = {target_trans(0), target_trans(1),basket_height};
+        Egien::Maxtrix4d T_WorldRobot;
+        T_WorldRobot << cos(yaw), -sin(yaw), 0, x
+                        sin(yaw), cos(yaw), 0, y
+                         0, 0, 1, 0
+                         0, 0, 0, 1;
+
+        Eigen::Matrix4d T_RobotWorld = T_WorldRobot.inverse();
+        Eigen::Matrix4d T_RobotBasket = T_RobotWorld * T_WorldBasket;
+        double basket_x = T_RobotBasket(0, 3);
+        double basket_y = T_RobotBasket(1, 3);
+
+         // 提取旋转矩阵
+        Eigen::Matrix3d R_RobotBasket = T_RobotBasket.block<3, 3>(0, 0);
+
+        // 计算 yaw 角度
+        // double new_yaw = atan2(R_RobotBasket(0, 0), R_RobotBasket(1, 0));
+        double new_yaw = atan2(basket_y, basket_x);
+        std::vector<double> trans_target = {basket_x, basket_y, new_yaw};
         return trans_target;
     }
 
     // 将目标点周围的点云成像
     void match_cloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_points){
-        
         pcl::KdTreeFLANN<pcl::PointXYZ> tree;
         tree.setInputCloud(cloud_points);
         
@@ -237,12 +300,11 @@ private:
     }
 
     void pub_pos(){
-        double x = trans_target_[0];
-        double y = trans_target_[1];
-        double yaw = atan2(y,x);
-        auto yaw_msg = std_msgs::msg::Float64();
-        yaw_msg.data = yaw;
-        yaw_pub->publish(yaw_msg);
+        geometry_msgs::msg::Vector3 pose_msg;
+        pose_msg.x = trans_target_[0];
+        pose_msg.y = trans_target_[1];
+        pose_msg.z = trans_target_[2];
+        yaw_pub->publish(pose_msg);
     }
 
 };
