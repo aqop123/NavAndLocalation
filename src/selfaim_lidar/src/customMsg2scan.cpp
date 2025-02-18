@@ -15,7 +15,7 @@
 
 #define X_TARGET
 #define Y_TARGET
-#define Z_TARGET
+#define Z_TARGET    0
 
 class CustomPoint2PointCloud2 : public rclcpp::Node
 {
@@ -23,12 +23,7 @@ public:
     CustomPoint2PointCloud2(const rclcpp::NodeOptions & options) : Node("customp2pcl")
     {
         RCLCPP_ERROR(get_logger(), "Start ODOM Subscriber!");
-        basket_target_ = {X_TARGET, Y_TARGET, Z_TARGET};
-        
-        T_WorldBasket << 0, 0, 0, X_TARGET,
-                         0, 0, 0, Y_TARGET,
-                         0, 0, 0, Z_TARGET,
-                         0, 0, 0, 1;
+        basket_target_ = (X_TARGET, Y_TARGET, Z_TARGET);
         global_cloud_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>("/global_cloud", rclcpp::SensorDataQoS());
         // split_cloud_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>("/split_cloud", 5);
         target_cloud_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>("/target_cloud", 5);
@@ -252,24 +247,18 @@ private:
         // double new_yaw = atan2(target_trans(1), target_trans(0));
         // trans_target = {target_trans(0), target_trans(1), new_yaw};
 
-        Egien::Maxtrix4d T_WorldRobot;
-        T_WorldRobot << cos(yaw), -sin(yaw), 0, x
-                        sin(yaw), cos(yaw), 0, y
-                         0, 0, 1, 0
-                         0, 0, 0, 1;
-
-        Eigen::Matrix4d T_RobotWorld = T_WorldRobot.inverse();
-        Eigen::Matrix4d T_RobotBasket = T_RobotWorld * T_WorldBasket;
-        double basket_x = T_RobotBasket(0, 3);
-        double basket_y = T_RobotBasket(1, 3);
-
-         // 提取旋转矩阵
-        Eigen::Matrix3d R_RobotBasket = T_RobotBasket.block<3, 3>(0, 0);
-
+        Egien::Vector3d robot_pos = (x,y,0);
+        Egien::Maxtrix3d R_WorldRobot;
+        R_WorldRobot << cos(yaw), -sin(yaw), 0,
+                        sin(yaw), cos(yaw), 0,
+                         0, 0, 1;
+        
+        Eigen::Vector3d BasketToRobot_pos = R_WorldRobot*basket_target_ + robot_pos;
+        
+        
         // 计算 yaw 角度
-        // double new_yaw = atan2(R_RobotBasket(0, 0), R_RobotBasket(1, 0));
-        double new_yaw = atan2(basket_y, basket_x);
-        std::vector<double> trans_target = {basket_x, basket_y, new_yaw};
+        double diff_yaw = atan2(BasketToRobot_pos(1), BasketToRobot_pos(0));
+        std::vector<double> trans_target = {BasketToRobot_pos(0), BasketToRobot_pos(1), diff_yaw};
         return trans_target;
     }
 

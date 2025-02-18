@@ -45,8 +45,7 @@ private:
     std::vector<double> cur_pos_;
     std::vector<double> trans_target_;
     std::vector<double> global_target_;
-    std::vector<double> basket_target_;
-    Egien::Maxtrix4d T_WorldBasket;
+    Eigen::Vector3d basket_target_;
     double basket_height;
 
 };
